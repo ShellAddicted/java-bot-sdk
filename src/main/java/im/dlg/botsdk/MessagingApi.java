@@ -10,16 +10,15 @@ import java.util.stream.IntStream;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import dialog.MessagingGrpc;
-import dialog.MessagingOuterClass;
+import dialog.*;
 import dialog.MessagingOuterClass.MessageContent;
 import dialog.MessagingOuterClass.RequestSendMessage;
 import dialog.MessagingOuterClass.UpdateMessage;
-import dialog.Peers;
 import im.dlg.botsdk.domain.Message;
 import im.dlg.botsdk.domain.Peer;
 import im.dlg.botsdk.domain.content.Content;
 import im.dlg.botsdk.domain.content.DocumentContent;
+import im.dlg.botsdk.domain.media.FileLocation;
 import im.dlg.botsdk.light.MessageListener;
 import im.dlg.botsdk.utils.Constants;
 import im.dlg.botsdk.utils.MsgUtils;
@@ -178,6 +177,32 @@ public class MessagingApi {
                 .setDocumentMessage(documentMessage)
                 .build();
         return send(peer, msg, targetUser);
+    }
+
+    /**
+     * see #getFileUrl
+     */
+    public CompletableFuture<MediaAndFilesOuterClass.ResponseGetFileUrl> getFileUrl(@Nonnull FileLocation fileLocation) {
+        return getFileUrl(fileLocation.getFileId(), fileLocation.getAccessHash());
+
+    }
+
+    /**
+     * Get download url of a particular file
+     *
+     * @param fileId       - the address peer user/channel/group
+     * @param accessHash   - document/video attachment
+     * @return - future with (MediaAndFilesOuterClass.)ResponseGetFileUrl, that completes when deliver to server
+     */
+    public CompletableFuture<MediaAndFilesOuterClass.ResponseGetFileUrl> getFileUrl(@Nonnull long fileId, @Nonnull long accessHash) {
+
+        MediaAndFilesOuterClass.RequestGetFileUrl.Builder request = MediaAndFilesOuterClass.RequestGetFileUrl.newBuilder().setFile(FileLocation.buildFileLocation(new FileLocation(fileId, accessHash)));
+
+        return privateBot.withToken(
+                MediaAndFilesGrpc.newFutureStub(privateBot.channel.getChannel())
+                        .withDeadlineAfter(2, TimeUnit.MINUTES),
+                stub -> stub.getFileUrl(request.build())
+        ).thenApplyAsync(resp -> resp, privateBot.executor.getExecutor());
     }
 
 
